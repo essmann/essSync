@@ -1,0 +1,13 @@
+### Add Folder
+POST http://localhost:8080/addFolder
+Content-Type: application/json
+
+{
+  "FolderName": "FolderName1",
+  "LocalPath": "C:\\Users\\User\\Documents\\FolderName1",
+  "FolderGuid": null,
+  "IsPaused": false,
+  "Size": 0,
+  "CreatedAt": "2026-01-31T14:56:54.864Z",
+  "LastSyncedAt": null
+}

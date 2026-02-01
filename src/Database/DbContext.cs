@@ -29,6 +29,11 @@ namespace essSync.src.Database
             modelBuilder.Entity<SharedFolder>()
                 .HasKey(f => f.SharedFolderId);
 
+            modelBuilder.Entity<SharedFolder>()
+                         .Property(f => f.Size)
+                         .HasDefaultValue(0);
+
+
             modelBuilder.Entity<SharedFile>()
                 .HasKey(f => f.SharedFileId);
 
@@ -74,8 +79,9 @@ namespace essSync.src.Database
         public string LocalPath { get; set; }        // Local and absolute path on this device
         public string FolderGuid { get; set; }       // Global unique identifier
         public bool IsPaused { get; set; }
+        public int Size { get; set; }
         public DateTime CreatedAt { get; set; }
-        public DateTime LastSyncedAt { get; set; }
+        public DateTime? LastSyncedAt { get; set; }
 
         public List<SharedFile> Files { get; set; } = new();
         public List<FolderDevice> FolderDevices { get; set; } = new();

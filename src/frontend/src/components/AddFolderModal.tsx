@@ -1,20 +1,13 @@
 // AddFolderModal.tsx
 import { useState } from 'react';
 import { X, FolderPlus } from 'lucide-react';
-
-interface Folder {
-  name: string;
-  status: string;
-  files: number;
-  size: string;
-  id: string;
-  path: string;
-}
+import { addFolder } from '../api/addFolder';
+import type { SharedFolder } from '../api/types/sharedFolder';
 
 interface AddFolderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddFolder: (folder: Folder) => void;
+  onAddFolder: () => void; // Trigger a refresh after successful save
 }
 
 const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) => {
@@ -24,38 +17,61 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
     id: '',
     path: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const generateFolderId = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let id = '';
-    for (let i = 0; i < 12; i++) {
-      id += chars[Math.floor(Math.random() * chars.length)];
-      if (i === 4 || i === 7) id += '-';
+
+
+  const handleSave = async () => {
+    console.log("Attempting to save folder:", folderForm);
+
+    // Validate required fields
+    if (!folderForm.path) {
+      setError('Folder Path is required');
+      return;
     }
-    setFolderForm({ ...folderForm, id });
-  };
 
-  const handleSave = () => {
-    if (folderForm.id && folderForm.path) {
-      onAddFolder({
-        name: folderForm.label || folderForm.id,
-        status: 'Idle',
-        files: 0,
-        size: '0 B',
-        id: folderForm.id,
-        path: folderForm.path
-      });
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const newFolder: SharedFolder = {
+        FolderName: folderForm.label,
+        LocalPath: folderForm.path,
+        FolderGuid: null,
+        IsPaused: false,
+        Size: 0,
+        CreatedAt: new Date().toISOString(),
+        LastSyncedAt: null
+      };
+
+      console.log("Calling addFolder API with:", newFolder);
+      await addFolder(newFolder);
+      console.log("Folder added successfully");
+
+      // Reset form and close
       setFolderForm({ label: '', id: '', path: '' });
       setActiveTab('general');
+      setError(null);
       onClose();
+      onAddFolder(); // Trigger parent to refresh folder list
+    } catch (err) {
+      console.error("Error adding folder:", err);
+      setError(err instanceof Error ? err.message : 'Failed to add folder');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
     setFolderForm({ label: '', id: '', path: '' });
     setActiveTab('general');
+    setError(null);
     onClose();
   };
+
+  // Check if form is valid
+  const isFormValid = Boolean(folderForm.path);
 
   if (!isOpen) return null;
 
@@ -67,12 +83,13 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
           <div className="flex items-center gap-2">
             <FolderPlus className="w-5 h-5 text-blue-400" />
             <h2 className="text-lg font-medium text-white">
-              Add Folder {folderForm.id && `(${folderForm.id})`}
+              Add Folder {`(${folderForm.id})`}
             </h2>
           </div>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-white transition-colors"
+            disabled={isSubmitting}
           >
             <X className="w-5 h-5" />
           </button>
@@ -84,10 +101,11 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
+              disabled={isSubmitting}
               className={`pb-3 px-1 text-sm font-medium transition-colors border-b-2 ${activeTab === tab
                 ? 'text-blue-400 border-blue-400'
                 : 'text-gray-400 border-transparent hover:text-gray-300'
-                }`}
+                } ${isSubmitting ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               {tab.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
             </button>
@@ -96,8 +114,16 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
 
         {/* Modal Content */}
         <div className="px-6 py-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
           {activeTab === 'general' && (
             <div className="space-y-6">
+              {/* Folder Label */}
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
                   Folder Label
@@ -108,41 +134,19 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
                   onChange={(e) => setFolderForm({ ...folderForm, label: e.target.value })}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
                   placeholder="Optional descriptive label for the folder"
+                  disabled={isSubmitting}
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Optional descriptive label for the folder. Can be different on each device.
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Folder ID
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={folderForm.id}
-                    onChange={(e) => setFolderForm({ ...folderForm, id: e.target.value })}
-                    className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
-                    placeholder="oqfst-qgc5y"
-                  />
-                  <button
-                    onClick={generateFolderId}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors text-sm"
-                  >
-                    Generate
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  Required identifier for the folder. Must be the same on all cluster devices. When adding a new folder,
-                  keep in mind that the Folder ID is used to tie folders together between devices. They are case sensitive
-                  and must match exactly between all devices.
-                </p>
-              </div>
 
+
+              {/* Folder Path */}
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
-                  Folder Path
+                  Folder Path <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -150,10 +154,10 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
                   onChange={(e) => setFolderForm({ ...folderForm, path: e.target.value })}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
                   placeholder="C:\Users\kenwi"
+                  disabled={isSubmitting}
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Path to the folder on the local computer. Will be created if it does not exist. The tilde character (~) can be
-                  used as a shortcut for <code className="text-gray-300">C:\Users\kenwi</code>.
+                  Path to the folder on the local computer. Will be created if it does not exist. The tilde character (~) can be used as a shortcut for `C:\Users\kenwi`.
                 </p>
               </div>
             </div>
@@ -170,16 +174,20 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
         <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-3 bg-gray-750">
           <button
             onClick={handleClose}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors text-sm"
+            disabled={isSubmitting}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Close
           </button>
           <button
             onClick={handleSave}
-            disabled={!folderForm.id || !folderForm.path}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting || !isFormValid}
+            className={`px-4 py-2 rounded font-medium transition-colors text-sm ${isSubmitting || !isFormValid
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
           >
-            Save
+            {isSubmitting ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
