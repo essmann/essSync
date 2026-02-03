@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text;
@@ -10,6 +11,11 @@ public class HttpServer
     private HttpListener _listener;
     public static WebSocket Client = null;
     private static readonly object _clientLock = new object();
+
+    //For queuing messages to send from other parts of the system
+    private static readonly ConcurrentQueue<string> _messageQueue = new();
+    private static readonly CancellationTokenSource _wsCts = new();
+    private static Task _wsSenderTask;
 
     // Add HTTP endpoint handlers
     private Dictionary<string, Func<HttpListenerRequest, HttpListenerResponse, Task<string>>> _getEndpoints;

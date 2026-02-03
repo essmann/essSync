@@ -1,0 +1,20 @@
+function(int x, int y){
+
+    return ["empty array"]
+};
+
+
+
+hva skal vi gjøre
+
+1 
+2
+3
+
+
+
+Jeg heter Ole.
+
+Dette er noe tekst! Ikke tenk på det. Ah-ha-ha-ha.
+
+

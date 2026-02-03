@@ -30,6 +30,11 @@ public class Endpoints
             return "OK";
         });
 
+        _server.AddGetEndpoint("/me", async (request, res) =>
+       {
+           return DeviceId.getDeviceId();
+       });
+
         // _server.AddGetEndpoint("/folders", async (request, res) =>
         // {
 

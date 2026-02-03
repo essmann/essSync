@@ -6,6 +6,12 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
 
+
+
+DeviceId.Initialize();
+string deviceId = DeviceId.getDeviceId();
+Console.WriteLine("Device ID: " + deviceId);
+
 // Creating/Accessing the database
 using var db = new SharedContext();
 db.Database.EnsureCreated();
@@ -21,6 +27,7 @@ var newFolder = new SharedFolder
     IsPaused = false,
     CreatedAt = DateTime.UtcNow,
     LastSyncedAt = DateTime.UtcNow
+
 };
 
 
