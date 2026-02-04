@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using essSync.src.Database;
 public class Endpoints
 {
@@ -63,6 +64,47 @@ public class Endpoints
                 }
             }
         });
+
+        _server.AddPostEndpoint("/addDevice", async (request, res, body) =>
+  {
+      try
+      {
+          // Deserialize the incoming JSON to DeviceDTO
+          var deviceDTO = System.Text.Json.JsonSerializer.Deserialize<DeviceDTO>(body);
+
+          if (deviceDTO == null)
+          {
+              res.StatusCode = 400;
+              return "Invalid device data.";
+          }
+
+          // Transform DTO to Entity
+          Device deviceEntity = new Device
+          {
+              DeviceId = deviceDTO.DeviceId,
+              DeviceGuid = deviceDTO.DeviceGuid,
+              DeviceName = deviceDTO.DeviceName,
+              IsThisDevice = deviceDTO.IsThisDevice,
+              LastSeenAt = deviceDTO.LastSeenAt,
+              IsConnected = deviceDTO.IsConnected,
+              DeviceIps = deviceDTO.DeviceIps?.Select(ip => new DeviceIp
+              {
+                  DeviceGuid = deviceDTO.DeviceGuid,
+                  Ip = ip
+              }).ToList() ?? new List<DeviceIp>()
+          };
+
+          // Save to DB
+          _dbApi.AddDevice(deviceEntity);
+
+          return "Device added successfully.";
+      }
+      catch (Exception ex)
+      {
+          res.StatusCode = 500;
+          return $"Error: {ex.Message}";
+      }
+  });
 
         _server.AddGetEndpoint("/*", async (request, res) =>
         {

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using essSync.src.Database;
 
@@ -10,9 +11,11 @@ using essSync.src.Database;
 namespace essSync.Migrations
 {
     [DbContext(typeof(SharedContext))]
-    partial class SharedContextModelSnapshot : ModelSnapshot
+    [Migration("20260204122515_AddDeviceIp")]
+    partial class AddDeviceIp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.2");

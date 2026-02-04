@@ -12,6 +12,10 @@ DeviceId.Initialize();
 string deviceId = DeviceId.getDeviceId();
 Console.WriteLine("Device ID: " + deviceId);
 
+Client client = new Client();
+
+Thread.Sleep(1000);
+
 // Creating/Accessing the database
 using var db = new SharedContext();
 db.Database.EnsureCreated();
@@ -29,6 +33,8 @@ var newFolder = new SharedFolder
     LastSyncedAt = DateTime.UtcNow
 
 };
+
+
 
 
 dbApi.AddSharedFolder(newFolder);

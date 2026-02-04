@@ -45,6 +45,7 @@ public class HttpServer
         _listener.Prefixes.Add($"http://localhost:{Port}/");
         _listener.Start();
 
+
         LogInfo($"Server started on http://localhost:{Port}/");
 
         while (_listener.IsListening)
@@ -246,6 +247,31 @@ public class HttpServer
         _listener?.Close();
     }
 
+    private async Task startMessageQueueProcessor()
+    {
+        //this token tells the task to cancel.
+        while (!_wsCts.Token.IsCancellationRequested)
+        {
+
+            if (!_messageQueue.IsEmpty)
+            {
+                string message;
+                _messageQueue.TryDequeue(out message);
+
+            }
+            else
+            {
+                await Task.Delay(100);
+            }
+
+        }
+
+    }
+    public async Task QueueMessage(string message)
+    {
+        _messageQueue.Enqueue(message);
+        await Task.CompletedTask;
+    }
     // ============================================
     // COLORFUL LOGGING METHODS
     // ============================================

@@ -10,6 +10,7 @@ namespace essSync.src.Database
         public DbSet<SharedFile> SharedFiles { get; set; }
         public DbSet<Device> Devices { get; set; }
         public DbSet<FolderDevice> FolderDevices { get; set; }
+        public DbSet<DeviceIp> DeviceIps { get; set; }  // <- added
 
         public string DbPath { get; }
 
@@ -25,26 +26,17 @@ namespace essSync.src.Database
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configure primary keys explicitly
-            modelBuilder.Entity<SharedFolder>()
-                .HasKey(f => f.SharedFolderId);
+            // Primary keys
+            modelBuilder.Entity<SharedFolder>().HasKey(f => f.SharedFolderId);
+            modelBuilder.Entity<SharedFolder>().Property(f => f.Size).HasDefaultValue(0);
 
-            modelBuilder.Entity<SharedFolder>()
-                         .Property(f => f.Size)
-                         .HasDefaultValue(0);
+            modelBuilder.Entity<SharedFile>().HasKey(f => f.SharedFileId);
+            modelBuilder.Entity<Device>().HasKey(d => d.DeviceId);
+            modelBuilder.Entity<DeviceIp>().HasKey(ip => ip.Id); // <- added
 
+            modelBuilder.Entity<FolderDevice>().HasKey(fd => new { fd.FolderId, fd.DeviceId });
 
-            modelBuilder.Entity<SharedFile>()
-                .HasKey(f => f.SharedFileId);
-
-            modelBuilder.Entity<Device>()
-                .HasKey(d => d.DeviceId);
-
-            // Composite key for FolderDevice (many-to-many)
-            modelBuilder.Entity<FolderDevice>()
-                .HasKey(fd => new { fd.FolderId, fd.DeviceId });
-
-            // Configure relationships explicitly
+            // Relationships
             modelBuilder.Entity<FolderDevice>()
                 .HasOne(fd => fd.SharedFolder)
                 .WithMany(sf => sf.FolderDevices)
@@ -60,14 +52,16 @@ namespace essSync.src.Database
                 .WithMany(folder => folder.Files)
                 .HasForeignKey(sf => sf.FolderId);
 
-            // Unique constraints
-            modelBuilder.Entity<SharedFolder>()
-                .HasIndex(f => f.FolderGuid)
-                .IsUnique();
+            // Device -> DeviceIp (one-to-many)
+            modelBuilder.Entity<DeviceIp>()
+                .HasOne<Device>()
+                .WithMany(d => d.DeviceIps)
+                .HasForeignKey(ip => ip.DeviceGuid)
+                .HasPrincipalKey(d => d.DeviceGuid);
 
-            modelBuilder.Entity<Device>()
-                .HasIndex(d => d.DeviceGuid)
-                .IsUnique();
+            // Unique constraints
+            modelBuilder.Entity<SharedFolder>().HasIndex(f => f.FolderGuid).IsUnique();
+            modelBuilder.Entity<Device>().HasIndex(d => d.DeviceGuid).IsUnique();
         }
     }
 
@@ -114,6 +108,14 @@ namespace essSync.src.Database
         public bool IsConnected { get; set; }
 
         public List<FolderDevice> FolderDevices { get; set; } = new();
+        public List<DeviceIp> DeviceIps { get; set; } = new();
+    }
+
+    public class DeviceIp
+    {
+        public int Id { get; set; }
+        public string DeviceGuid { get; set; }
+        public string Ip { get; set; }
     }
 
     // Junction table: which devices have access to which folders

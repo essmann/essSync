@@ -1,4 +1,3 @@
-// AddDeviceModal.tsx
 import { useState } from 'react';
 import { X, Monitor } from 'lucide-react';
 
@@ -6,12 +5,13 @@ interface Device {
   name: string;
   status: string;
   id: string;
+  addresses?: string[]; // added addresses array
 }
 
 interface AddDeviceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddDevice: (device: Device) => void;
+  onAddDevice: (device: Device) => Promise<void>; // async
 }
 
 const AddDeviceModal = ({ isOpen, onClose, onAddDevice }: AddDeviceModalProps) => {
@@ -21,20 +21,42 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }: AddDeviceModalProps) =
     address: ''
   });
 
-  const handleSave = () => {
-    if (deviceForm.deviceId) {
-      onAddDevice({
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!deviceForm.deviceId) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      // Split comma-separated addresses into an array and trim spaces
+      const addressesArray = deviceForm.address
+        .split(',')
+        .map(addr => addr.trim())
+        .filter(addr => addr.length > 0);
+
+      await onAddDevice({
         name: deviceForm.name || 'New Device',
         status: 'Disconnected',
-        id: deviceForm.deviceId
+        id: deviceForm.deviceId,
+        addresses: addressesArray
       });
+
       setDeviceForm({ deviceId: '', name: '', address: '' });
       onClose();
+    } catch (err: any) {
+      console.error('Error adding device:', err);
+      setError(err.message || 'Failed to add device. Check your network connection.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleClose = () => {
     setDeviceForm({ deviceId: '', name: '', address: '' });
+    setError(null);
     onClose();
   };
 
@@ -49,7 +71,7 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }: AddDeviceModalProps) =
             <Monitor className="w-5 h-5 text-blue-400" />
             <h2 className="text-lg font-medium text-white">Add Remote Device</h2>
           </div>
-          <button 
+          <button
             onClick={handleClose}
             className="text-gray-400 hover:text-white transition-colors"
           >
@@ -59,6 +81,8 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }: AddDeviceModalProps) =
 
         {/* Modal Content */}
         <div className="px-6 py-6 space-y-6">
+          {error && <div className="text-sm text-red-400">{error}</div>}
+
           <div>
             <label className="block text-sm font-medium text-white mb-2">
               Device ID
@@ -66,13 +90,14 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }: AddDeviceModalProps) =
             <input
               type="text"
               value={deviceForm.deviceId}
-              onChange={(e) => setDeviceForm({ ...deviceForm, deviceId: e.target.value.toUpperCase() })}
+              onChange={(e) =>
+                setDeviceForm({ ...deviceForm, deviceId: e.target.value.toUpperCase() })
+              }
               className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
               placeholder="A8F3C9E2-1B4D-5F7A-8C9E-2D3F4A5B6C7D"
             />
             <p className="text-xs text-gray-400 mt-1">
-              The device ID to add. It can be obtained from the other device's "Actions" → "Show ID" dialog. 
-              Spaces and dashes are optional (ignored).
+              The device ID to add. Spaces and dashes are optional (ignored).
             </p>
           </div>
 
@@ -101,10 +126,10 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }: AddDeviceModalProps) =
               value={deviceForm.address}
               onChange={(e) => setDeviceForm({ ...deviceForm, address: e.target.value })}
               className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
-              placeholder="dynamic"
+              placeholder="tcp://192.168.1.2:1234, tcp://192.168.1.3:1234"
             />
             <p className="text-xs text-gray-400 mt-1">
-              Enter addresses as <code className="text-gray-300">tcp://ip:port</code> or <code className="text-gray-300">dynamic</code> to use automatic discovery.
+              Enter addresses separated by commas. Use <code className="text-gray-300">dynamic</code> for automatic discovery.
             </p>
           </div>
         </div>
@@ -119,10 +144,10 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }: AddDeviceModalProps) =
           </button>
           <button
             onClick={handleSave}
-            disabled={!deviceForm.deviceId}
+            disabled={!deviceForm.deviceId || isSaving}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Add Device
+            {isSaving ? 'Adding...' : 'Add Device'}
           </button>
         </div>
       </div>

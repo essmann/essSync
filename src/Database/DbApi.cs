@@ -129,6 +129,40 @@ public class DbApi
         }
     }
 
+    public void AddDevice(Device device)
+    {
+        if (string.IsNullOrWhiteSpace(device.DeviceGuid))
+        {
+            Log("ERROR", $"Cannot add device '{device.DeviceName}' because DeviceGuid is missing.");
+            throw new ArgumentException("Device GUID must be provided", nameof(device.DeviceGuid));
+        }
+
+        Log("INFO", $"Attempting to add device: {device.DeviceName}, GUID: {device.DeviceGuid}");
+
+        try
+        {
+            // Check if device GUID already exists
+            if (context.Devices.Any(d => d.DeviceGuid == device.DeviceGuid))
+            {
+                Log("WARN", $"Device with GUID {device.DeviceGuid} already exists in the database.");
+                return;
+            }
+
+            context.Devices.Add(device);
+            context.SaveChanges();
+
+            Log("INFO", $"Successfully added device to database: {device.DeviceName} (ID: {device.DeviceId}, GUID: {device.DeviceGuid})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            Console.WriteLine(ex.InnerException?.Message);
+
+            Log("ERROR", $"Error adding device '{device.DeviceName}': {ex.Message}");
+            throw;
+        }
+    }
+
     private void Log(string level, string message)
     {
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
