@@ -1,7 +1,7 @@
 const url = import.meta.env.VITE_API_URL;
 import type { SharedFolder } from "./types/sharedFolder";
 
-export async function addFolder(folder: SharedFolder): Promise<void> {
+export async function addFolder(folder: SharedFolder): Promise<SharedFolder> {
     console.log('[API] Adding folder:', {
         folderName: folder.FolderName,
         localPath: folder.LocalPath,
@@ -27,9 +27,12 @@ export async function addFolder(folder: SharedFolder): Promise<void> {
             throw new Error(`Failed to add folder: ${response.status} ${response.statusText}`);
         }
 
-        console.log('[API] Successfully added folder:', folder.FolderName);
+        const responseFolder: SharedFolder = await response.json();
+        console.log('[API] Successfully added folder:', responseFolder.FolderName);
+
+        return responseFolder;
     } catch (error) {
         console.error('[API] Error adding folder:', error);
-        throw error;
+        throw error; // Re-throw so the caller can handle it
     }
 }

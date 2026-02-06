@@ -7,7 +7,7 @@ import type { SharedFolder } from '../api/types/sharedFolder';
 interface AddFolderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddFolder: () => void; // Trigger a refresh after successful save
+  onAddFolder: (folder: SharedFolder) => void; // Trigger a refresh after successful save
 }
 
 const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) => {
@@ -41,12 +41,14 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
         FolderGuid: null,
         IsPaused: false,
         Size: 0,
+        NumFiles: 0,
+        NumSubFolders: 0,
         CreatedAt: new Date().toISOString(),
         LastSyncedAt: null
       };
 
       console.log("Calling addFolder API with:", newFolder);
-      await addFolder(newFolder);
+      const folderResponse = await addFolder(newFolder);
       console.log("Folder added successfully");
 
       // Reset form and close
@@ -54,7 +56,7 @@ const AddFolderModal = ({ isOpen, onClose, onAddFolder }: AddFolderModalProps) =
       setActiveTab('general');
       setError(null);
       onClose();
-      onAddFolder(); // Trigger parent to refresh folder list
+      onAddFolder(folderResponse); // Trigger parent to refresh folder list
     } catch (err) {
       console.error("Error adding folder:", err);
       setError(err instanceof Error ? err.message : 'Failed to add folder');

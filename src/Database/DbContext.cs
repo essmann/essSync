@@ -29,6 +29,9 @@ namespace essSync.src.Database
             // Primary keys
             modelBuilder.Entity<SharedFolder>().HasKey(f => f.SharedFolderId);
             modelBuilder.Entity<SharedFolder>().Property(f => f.Size).HasDefaultValue(0);
+            modelBuilder.Entity<SharedFolder>().Property(f => f.NumFiles).HasDefaultValue(0);
+            modelBuilder.Entity<SharedFolder>().Property(f => f.NumSubFolders).HasDefaultValue(0);
+
 
             modelBuilder.Entity<SharedFile>().HasKey(f => f.SharedFileId);
             modelBuilder.Entity<Device>().HasKey(d => d.DeviceId);
@@ -73,7 +76,14 @@ namespace essSync.src.Database
         public string LocalPath { get; set; }        // Local and absolute path on this device
         public string FolderGuid { get; set; }       // Global unique identifier
         public bool IsPaused { get; set; }
-        public int Size { get; set; }
+        public long Size { get; set; }
+
+        public string? Permissions { get; set; } //read, read-write
+
+        public DateTime LastModified { get; set; }
+        public int NumFiles { get; set; }
+        public int NumSubFolders { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTime? LastSyncedAt { get; set; }
 

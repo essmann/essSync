@@ -10,16 +10,31 @@ public class Endpoints
 
     private HttpServer _server;
     private DbApi _dbApi;
-    public Endpoints(HttpServer _server, DbApi dbApi)
+    private SharedFolderApi _folderApi;
+    public Endpoints(HttpServer _server, DbApi dbApi, SharedFolderApi folderApi)
     {
         this._server = _server;
         this._dbApi = dbApi;
+        this._folderApi = folderApi;
     }
 
 
     public void init()
     {
 
+        _server.AddGetEndpoint("/test", async (request, res) =>
+        {
+            res.ContentType = "application/json";
+            var folders = _dbApi.GetAllSharedFoldersWithoutContents();
+            List<FolderMessage> folderMessages = new();
+            int i = 0;
+            while (i < folders.Count)
+            {
+                folderMessages.Add(new FolderMessage(folders[i]));
+                i++;
+            }
+            return JsonSerializer.Serialize(folderMessages);
+        });
         // Add HTTP endpoints
         _server.AddGetEndpoint("/status", async (request, res) =>
         {
@@ -33,7 +48,12 @@ public class Endpoints
 
         _server.AddGetEndpoint("/me", async (request, res) =>
        {
-           return DeviceId.getDeviceId();
+           string pcName = System.Environment.MachineName;
+           var dto = new DeviceInfoDTO();
+           dto.DeviceGuid = DeviceId.getDeviceId();
+           dto.HostName = pcName;
+
+           return JsonSerializer.Serialize(dto);
        });
 
         // _server.AddGetEndpoint("/folders", async (request, res) =>
@@ -45,17 +65,33 @@ public class Endpoints
         //     var json = JsonArray.FromArray(folders.Select(f => JsonObject.Parse(System.Text.Json.JsonSerializer.Serialize(f))));
         //     return json.ToJsonString();
         // })
+        _server.AddGetEndpoint("/getFolders", async (req, res) =>
+        {
+
+            res.ContentType = "application/json";
+            var folders = _dbApi.GetAllSharedFoldersWithoutContents();
+            List<FolderMessage> folderMessages = new();
+            int i = 0;
+            while (i < folders.Count)
+            {
+                folderMessages.Add(new FolderMessage(folders[i]));
+                i++;
+            }
+            return JsonSerializer.Serialize(folderMessages);
+        });
         _server.AddPostEndpoint("/addFolder", async (request, res, body) =>
         {
             using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
             {
+                res.ContentType = "application/json";
                 // string body = await reader.ReadToEndAsync();
                 var folderData = System.Text.Json.JsonSerializer.Deserialize<SharedFolder>(body);
 
                 if (folderData != null)
                 {
-                    _dbApi.AddSharedFolder(folderData);
-                    return "Folder added successfully.";
+                    _folderApi.AddSharedFolder(folderData.LocalPath);
+                    FolderMessage folderMessage = new FolderMessage(folderData);
+                    return JsonSerializer.Serialize<FolderMessage>(folderMessage);
                 }
                 else
                 {
@@ -143,6 +179,7 @@ public class Endpoints
             }
         });
     }
+
 
     static string GetContentType(string path)
     {

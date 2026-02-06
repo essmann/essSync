@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 public class DbApi
 {
     private SharedContext context;
-
     public DbApi(DbContext context)
     {
         this.context = (SharedContext)context;
@@ -16,6 +15,21 @@ public class DbApi
         try
         {
             var folders = context.SharedFolders.Include(f => f.Files).ToList();
+            Log("INFO", $"Successfully retrieved {folders.Count} shared folders");
+            return folders;
+        }
+        catch (Exception ex)
+        {
+            Log("ERROR", $"Error retrieving shared folders: {ex.Message}");
+            throw;
+        }
+    }
+    public List<SharedFolder> GetAllSharedFoldersWithoutContents()
+    {
+        Log("INFO", "Retrieving all shared folder metadata from database");
+        try
+        {
+            var folders = context.SharedFolders.ToList();
             Log("INFO", $"Successfully retrieved {folders.Count} shared folders");
             return folders;
         }
@@ -53,7 +67,7 @@ public class DbApi
         }
     }
 
-    public void AddSharedFolder(SharedFolder folder)
+    public SharedFolder AddSharedFolder(SharedFolder folder)
     {
         Log("INFO", $"Attempting to add shared folder: {folder.FolderName}, Path: {folder.LocalPath}, GUID: {folder.FolderGuid}");
 
@@ -68,7 +82,7 @@ public class DbApi
             if (context.SharedFolders.Any(f => f.LocalPath == folder.LocalPath))
             {
                 Log("WARN", $"Folder path already exists in database: {folder.LocalPath}");
-                return;
+                return null;
             }
 
             context.SharedFolders.Add(folder);
@@ -76,8 +90,7 @@ public class DbApi
 
             Log("INFO", $"Successfully added shared folder to database: {folder.FolderName} (ID: {folder.SharedFolderId})");
 
-            FolderWatcher.AddFolderToWatch(folder.LocalPath);
-            Log("INFO", $"Added folder to watcher: {folder.LocalPath}");
+            return folder;
         }
         catch (Exception ex)
         {
@@ -90,8 +103,12 @@ public class DbApi
         }
     }
 
+
     public void UpdateSharedFolder(SharedFolder folder)
     {
+
+
+
         Log("INFO", $"Updating shared folder: {folder.FolderName} (ID: {folder.SharedFolderId}, GUID: {folder.FolderGuid})");
 
         try
@@ -119,8 +136,6 @@ public class DbApi
 
             Log("INFO", $"Successfully deleted shared folder from database: {folder.FolderName} (ID: {folder.SharedFolderId})");
 
-            FolderWatcher.RemoveFolderToWatch(folder.LocalPath);
-            Log("INFO", $"Removed folder from watcher: {folder.LocalPath}");
         }
         catch (Exception ex)
         {

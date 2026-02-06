@@ -44,7 +44,7 @@ public class HttpServer
 
         _listener.Prefixes.Add($"http://localhost:{Port}/");
         _listener.Start();
-
+        _ = startMessageQueueProcessor(); //Starts tracking the queue for messages in a thread
 
         LogInfo($"Server started on http://localhost:{Port}/");
 
@@ -61,6 +61,7 @@ public class HttpServer
 
                     lock (_clientLock)
                     {
+                        //If there is already an open websocket connection, close it.
                         if (Client != null && Client.State == WebSocketState.Open)
                         {
                             Client.CloseAsync(WebSocketCloseStatus.NormalClosure, "New connection", CancellationToken.None);
@@ -215,7 +216,7 @@ public class HttpServer
     }
 
     // Helper method to send messages
-    public static async Task SendMessage(string message)
+    private static async Task SendMessage(string message)
     {
         if (Client != null && Client.State == WebSocketState.Open)
         {
@@ -255,8 +256,21 @@ public class HttpServer
 
             if (!_messageQueue.IsEmpty)
             {
-                string message;
-                _messageQueue.TryDequeue(out message);
+
+                try
+                {
+                    Console.WriteLine("Attempting to send message via queue.");
+                    Console.WriteLine("Queue size: " + _messageQueue.Count);
+
+                    string message;
+                    _messageQueue.TryDequeue(out message);
+                    await SendMessage(message);
+
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
 
             }
             else

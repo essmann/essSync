@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using essSync.src.Database;
 
@@ -10,9 +11,11 @@ using essSync.src.Database;
 namespace essSync.Migrations
 {
     [DbContext(typeof(SharedContext))]
-    partial class SharedContextModelSnapshot : ModelSnapshot
+    [Migration("20260205114821_FilesAndFolderNumber")]
+    partial class FilesAndFolderNumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.2");
@@ -172,10 +175,10 @@ namespace essSync.Migrations
                     b.Property<string>("Permissions")
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("Size")
+                    b.Property<int>("Size")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
-                        .HasDefaultValue(0L);
+                        .HasDefaultValue(0);
 
                     b.HasKey("SharedFolderId");
 

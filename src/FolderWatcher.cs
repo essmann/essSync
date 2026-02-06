@@ -1,23 +1,41 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using essSync.src.Database;
 
-public static class FolderWatcher
+public class FolderWatcher
 {
-    private static readonly List<string> folderPaths = new();
-
-    private static readonly Dictionary<string, FileSystemWatcher> fileWatchers =
+    private readonly List<string> folderPaths = new();
+    private DbApi _dbApi;
+    private SharedFolderApi _folderApi;
+    private readonly Dictionary<string, FileSystemWatcher> fileWatchers =
         new(StringComparer.OrdinalIgnoreCase);
 
+    private readonly Lock _contextLock = new();
     /* ---------------- Public API ---------------- */
 
-    public static void SetFolderPaths(IEnumerable<string> paths)
+    public void SetDbApi(DbApi dbApi, SharedFolderApi folderApi)
+    {
+        _dbApi = dbApi;
+        _folderApi = folderApi;
+    }
+
+    public void SetFolderPaths(IEnumerable<string> paths)
     {
         foreach (var path in paths)
             AddFolderToWatch(path);
     }
 
-    public static void AddFolderToWatch(string folderPath)
+    public void PrintPaths()
+    {
+        string paths = "";
+        foreach (string path in folderPaths)
+        {
+            paths += path + "\n";
+        }
+        Console.WriteLine(paths);
+    }
+    public void AddFolderToWatch(string folderPath)
     {
         if (string.IsNullOrWhiteSpace(folderPath))
             return;
@@ -35,35 +53,33 @@ public static class FolderWatcher
         Console.WriteLine($"Started watching: {folderPath}");
     }
 
-    public static void RemoveFolderToWatch(string folderPath)
+    public void RemoveFolderToWatch(string folderPath)
     {
         if (!fileWatchers.TryGetValue(folderPath, out var watcher))
             return;
 
         watcher.EnableRaisingEvents = false;
         watcher.Dispose();
-
         fileWatchers.Remove(folderPath);
         folderPaths.Remove(folderPath);
 
         Console.WriteLine($"Stopped watching: {folderPath}");
     }
 
-    public static void StopAll()
+    public void StopAll()
     {
         foreach (var watcher in fileWatchers.Values)
         {
             watcher.EnableRaisingEvents = false;
             watcher.Dispose();
         }
-
         fileWatchers.Clear();
         folderPaths.Clear();
     }
 
     /* ---------------- Watcher setup ---------------- */
 
-    private static FileSystemWatcher CreateWatcher(string folderPath)
+    private FileSystemWatcher CreateWatcher(string folderPath)
     {
         var watcher = new FileSystemWatcher(folderPath)
         {
@@ -86,17 +102,51 @@ public static class FolderWatcher
 
     /* ---------------- Event handlers ---------------- */
 
-    private static void OnChanged(object sender, FileSystemEventArgs e)
+    private void OnChanged(object sender, FileSystemEventArgs e)
     {
-        Console.WriteLine($"[{e.ChangeType}] {e.FullPath}");
+        lock (_contextLock)
+        {
+            Console.WriteLine($"[{e.ChangeType}] {e.FullPath}");
+
+            switch (e.ChangeType)
+            {
+                case WatcherChangeTypes.Deleted:
+                    Console.WriteLine("Watcher detected a delete.");
+                    _folderApi.DeleteSharedFolder(e.FullPath, WatcherChangeTypes.Deleted);
+                    break;
+
+            }
+        }
     }
 
-    private static void OnRenamed(object sender, RenamedEventArgs e)
+    private void OnRenamed(object sender, RenamedEventArgs e)
     {
-        Console.WriteLine($"[Renamed] {e.OldFullPath} -> {e.FullPath}");
+        lock (_contextLock)
+        {
+            Console.WriteLine($"[Renamed] {e.OldFullPath} -> {e.FullPath}");
+
+            if (_dbApi == null)
+                return;
+
+            try
+            {
+                // Handle rename in DB
+                var folder = _dbApi.GetAllSharedFoldersWithoutContents()
+                                   .FirstOrDefault(f => f.LocalPath == Path.GetDirectoryName(e.OldFullPath));
+
+                if (folder == null)
+                    return;
+
+                folder.LocalPath = Path.GetDirectoryName(e.FullPath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating renamed folder in DB: {ex.Message}");
+            }
+        }
     }
 
-    private static void OnError(object sender, ErrorEventArgs e)
+    private void OnError(object sender, ErrorEventArgs e)
     {
         Console.WriteLine("FileSystemWatcher error:");
 

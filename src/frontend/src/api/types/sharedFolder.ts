@@ -4,6 +4,9 @@ export interface SharedFolder {
     FolderGuid: string | null;
     IsPaused: boolean;
     Size: number;
-    CreatedAt: string;
+    Permissions?: string;
+    NumFiles: number;
+    NumSubFolders: number;
+    CreatedAt: string | null;
     LastSyncedAt: string | null;
 }
